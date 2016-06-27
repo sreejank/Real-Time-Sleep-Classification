@@ -87,7 +87,7 @@ def power(epochArray,bin1,bin2):
         return math.log10(sumabs)
     
 """
-Analyze epoch's and return featuers. 
+Analyze epoch's and return features. 
 """
 def analyzeEpochs(eegEpochs,emgEpochs):
     print("Calculating features...")
