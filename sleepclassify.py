@@ -6,6 +6,9 @@ import math
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.signal import butter,lfilter
 from sklearn.cluster import KMeans
+from sklearn.cluster import DBSCAN
+from sklearn import tree
+import random
 """
 Read test states from dat file. 
 0=EEG Channel 1
@@ -128,50 +131,92 @@ def normalize(delta,ratios,emgPower):
     return (normDelta,normRatios,normEMGPower)
 
 """
-Classifies using unsupervised classification. 
-0=Wake
-1=NREM
-2=REM
+Classifies using kmeans algorithm (unsupervised). Eliminates all data >4 standard deviations in any of its features
+and assigns them random states.
 """
-def simpleClassify(delta,ratios,emgPower):
+def kMeansCluster(delta,ratios,emgPower):
+    print("Clustering...")
     data=[]
     for i in range(len(delta)):
         point=[delta[i],ratios[i],emgPower[i]]
         data.append(point)
 
-    print("Clustering...")
-    kmeans=KMeans(n_clusters=3)
-    kmeans.fit(data)
-    print("Done!")
-    return kmeans.labels_
+    i=0
+    outlierIndices=[]
+    mainPoints=data[:]
+    for point in data:
+        if abs(point[0])>4.0 or abs(point[1])>4.0 or abs(point[2])>4.0:
+            outlierIndices.append(i)
+            mainPoints.remove(point)
+        i+=1
 
+    kmeans=KMeans(n_clusters=3)
+    kmeans.fit(mainPoints)
+    labels=kmeans.labels_
+
+    for i in outlierIndices:
+        r=random.randint(0,2)
+        np.insert(labels,i,r)
+
+    print("Done!")
+    return label
+"""
+Unsupervised classifying using thresholds defined by the best possible decision tree calculated. 
+"""
+def thresholdClassification(delta,ratios,emgPower):
+    calculated=[]
+    for i in range(len(delta)):
+        X=[delta[i],ratios[i],emgPower[i]]
+
+        if X[0]<=-0.018:
+            if X[2]<=.5:
+                if X[1]<=1.08:
+                    calculated.append(0)
+                else:
+                    calculated.append(2)
+            else:
+                calculated.append(0)
+        else:
+            if X[2]<=.6099:
+                calculated.append(1)
+            else:
+                calculated.append(0)
+
+    return calculated
+
+
+
+"""
+Create decision tree and output into graph visualization format (dot). Exports to graphFileName
+"""
+def decisionTree(delta,ratios,emgPower,labels,graphFileName):
+    data=[]
+    for i in range(len(delta)):
+        point=[delta[i],ratios[i],emgPower[i]]
+        data.append(point)
+    
+    data=np.asarray(data)
+    model=tree.DecisionTreeClassifier(criterion='entropy',max_depth=3)
+    model=model.fit(data,labels)
+    print("Score of Decision Tree: {}".format(model.score(data,labels)))
+    tree.export_graphviz(model,out_file=graphFileName)
+    return (model.predict(data))
 
 
 """
 Similarity between two state arrays. 
 """
 def printSimilarity(actual,ratings):
-    matches=0.0
-    for i in range(len(ratings)):
-        if actual[i]==2 and ratings[i]==actual[i]:
-            matches+=1
-    print("REM similarity")
-    print(matches/len(ratings))
-    matches=0.0
+    actualCount=[0,0,0]
+    calcCount=[0,0,0]
 
-    for i in range(len(ratings)):
-        if actual[i]==1 and ratings[i]==actual[i]:
-            matches+=1
-    print("NREM similarity")
-    print(matches/len(ratings))
-    matches=0.0
+    for i in range(len(actual)):
+        actualCount[actual[i]]+=1
+        calcCount[ratings[i]]+=1
 
-    for i in range(len(ratings)):
-        if actual[i]==0 and ratings[i]==actual[i]:
-            matches+=1
-    print("Wake similarity")
-    print(matches/len(ratings))
-
+    print("Wake. Calculated {} with actual {}".format(calcCount[0],actualCount[0]))
+    print("NREM. Calculated {} with actual {}".format(calcCount[1],actualCount[1]))
+    print("REM. Calculated {} with actual {}".format(calcCount[2],actualCount[2]))
 
 
 """
@@ -185,48 +230,94 @@ def plotHypnogram(actual,ratings):
     axarr[1].plot(ratings)
     axarr[1].set_title("Calculated")
     print("Done!")
+"""
+Plot REM Hypnogram (goes up to 1 if REM, 0 if not)
+"""
+def plotREMHypnogram(actual,ratings):
+    actualREM=[]
+    ratingREM=[]
+    for i in range(len(actual)):
+        calc=ratings[i]
+        real=actual[i]
+        if calc==2:
+            ratingREM.append(1)
+        else:
+            ratingREM.append(0)
+        if real==2:
+            actualREM.append(1)
+        else:
+            actualREM.append(0)
+
+    plt.figure(1)
+    plt.plot(actualREM,label='Actual')
+    plt.plot(ratingREM,label='Calculated')
+
+    plt.figure(2)
+    f,axarr=plt.subplots(2,sharex=True)
+    axarr[0].plot(actualREM)
+    axarr[0].set_title("Actual")
+    axarr[1].plot(ratingREM)
+    axarr[1].set_title("Calculated")
 
 """
 Make 3 2D plots of the features. 
 """
-def plotThreeFeatures(delta,emgPower,ratios,ratings):
+def plotThreeFeatures(delta,emgPower,ratios,ratings,actual):
     print("Calculating features plot...")
-    #delta=[math.log10(x) for x in delta]
-    #emgPower=[math.log10(x) for x in emgPower]
-    #ratios=[math.log10(x) for x in emgPower]
-    colors=[]
+    colorsRatings=[]
+    colorsActual=[]
     for i in ratings:
         if i==0:
-            colors.append('r')
+            colorsRatings.append('r')
         elif i==1:
-            colors.append('g')
+            colorsRatings.append('g')
         else:
-            colors.append('b')
+            colorsRatings.append('b')
 
-   
+
+    for i in actual:
+        if i==0:
+            colorsActual.append('r')
+        elif i==1:
+            colorsActual.append('g')
+        else:
+            colorsActual.append('b')
+
     plt.figure(1)
-    plt.scatter(emgPower,ratios,c=colors)
+    f,axarr=plt.subplots(2)
+    axarr[0].scatter(emgPower,ratios,c=colorsActual)
+    axarr[0].set_title("Actual")
+    axarr[1].scatter(emgPower,ratios,c=colorsRatings)
+    axarr[1].set_title("Calculated")
     plt.xlabel("EMG Power")
     plt.ylabel("Theta Delta Ratio")
-
+    
     plt.figure(2)
-    plt.scatter(emgPower,delta,c=colors)
+    f,axarr=plt.subplots(2)
+    axarr[0].scatter(emgPower,delta,c=colorsActual)
+    axarr[0].set_title("Actual")
+    axarr[1].scatter(emgPower,delta,c=colorsRatings)
+    axarr[1].set_title("Calculated")
     plt.xlabel("EMG Power")
     plt.ylabel("Delta Power")
 
     plt.figure(3)
-    plt.scatter(ratios,delta,c=colors)
+    f,axarr=plt.subplots(2)
+    axarr[0].scatter(ratios,delta,c=colorsActual)
+    axarr[0].set_title("Actual")
+    axarr[1].scatter(ratios,delta,c=colorsRatings)
+    axarr[1].set_title("Calculated")
     
     plt.xlabel("Theta Delta Ratio")
     plt.ylabel("Delta Power")
-
+    
     print("Done!")
-   
+
+
 
 """
 Plot power spectrum transformed by real FFT. 
 """
-
 def plotPowerSpectrum(epoch):
     print("Calculating Power Spectrum...")
     f,axarr=plt.subplots(2)
@@ -249,8 +340,8 @@ def calcEpochSize(channels,ratings):
     return a/b
 ##########################################
 
-channels=readChannels('channels1032.dat')
-actual=readTestStates('teststates1032.dat')
+channels=readChannels('channels1040.dat')
+actual=readTestStates('teststates1040.dat')
 size=calcEpochSize(channels[0],actual)
 
 
@@ -260,14 +351,14 @@ emg=epochs(channels[2],size)
 features=analyzeEpochs(eeg,emg) # (delta,theta,ratios,emgPower)
 normalized=normalize(features[0],features[2],features[3])
 
-
-
-ratings=simpleClassify(normalized[0],normalized[1],normalized[2])
-#printSimilarity(actual,ratings)
+#ratings=decisionTree(normalized[0],normalized[1],normalized[2],actual,'1032DecisionTree.dot')
+ratings=thresholdClassification(normalized[0],normalized[1],normalized[2])
+printSimilarity(actual,ratings)
 
 
 #plotHypnogram(actual,ratings)
 #plotPowerSpectrum(channels[2][0:size])
-plotThreeFeatures(normalized[0],normalized[2],normalized[1],ratings)
+#plotThreeFeatures(normalized[0],normalized[2],normalized[1],ratings,actual)
+plotREMHypnogram(actual,ratings)
 
 plt.show()
