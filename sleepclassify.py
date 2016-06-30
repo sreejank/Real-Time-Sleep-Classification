@@ -8,6 +8,7 @@ from scipy.signal import butter,lfilter
 from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
 from sklearn import tree
+from sklearn import mixture
 import random
 
 #Read test states from dat file. 
@@ -112,8 +113,36 @@ def thetaAutoCorrelation(epochArray):
 
     return sumdiff
 
+#Find Approximate Entropy of this epoch (bandpassing for theta). Using m=2 and r=0.2*SD. 
+def approximateEntropy(epoch):
+    r=0.2*np.std(epoch)
+    epoch=butter_bandpass(epoch,5,10,400)
 
+    def phi(m,epoch):
+        x=[]
+        for i in range(len(epoch)-m):
+            xi=[]
+            for k in range(m):
+                xi.append(epoch[i+k])
+            x.append(xi)
+        C=[]
+        for i in range(len(x)):
+            num=0
+            for j in range(len(x)):
+                compDistances=[]
+                for index in range(m):
+                    compDistances.append(abs(x[i][index]-x[j][index]))
+                dist=max(compDistances)
+                if dist<r:
+                    num+=1
+            val=float(num)/len(x)
+            C.append(val)
+        p=sum(C)
+        logged=np.log(p)
+        logged=logged/len(C)
+        return logged
 
+    return phi(2,epoch)-phi(3,epoch)
 
 #Analyze epoch's and return features. 
 
@@ -143,6 +172,7 @@ def analyzeEpochs(eegEpochs,emgEpochs):
             ratio=float(t)/float(d)
         ratios.append(ratio)
 
+
     print("Done!")
     return (delta,theta,ratios,emgPower,autocorr)
 
@@ -156,7 +186,14 @@ def normalize(*args):
         fin.append(stats.zscore(arg))
     print("Done!")
     return fin
-
+#Takes normalized features and creates the data array
+def genData(normalizedArray):
+    data=[]
+    for i in range(len(normalizedArray[0])):
+        a=[normalizedArray[0][i],normalizedArray[1][i],normalizedArray[2][i],normalizedArray[3][i]]
+        data.append(a)
+    data=np.asarray(data)
+    return data
 
 #Classifies using kmeans algorithm (unsupervised). Eliminates all data >4 standard deviations in any of its features
 #and assigns them random states.
@@ -171,10 +208,13 @@ def kMeansCluster(delta,ratios,emgPower):
     i=0
     outlierIndices=[]
     mainPoints=data[:]
-    for point in data:
-        if abs(point[0])>4.0 or abs(point[1])>4.0 or abs(point[2])>4.0:
+    for index in range(len(data)):
+        a=point[index][0]
+        b=point[index][1]
+        c=point[index][2]
+        if abs(a)>=4.0 or abs(b)>=4.0 or abs(c)>=4.0:
             outlierIndices.append(i)
-            mainPoints.remove(point)
+            mainPoints=mainPoints.delete(mainPoints,index)
         i+=1
 
     kmeans=KMeans(n_clusters=3)
@@ -208,6 +248,32 @@ def thresholdClassification(X):
 
     return calculated
 
+#Clusters data using Gaussian mixture. Ignore outliers >4 Standard Deviations. 
+def gaussianMixtureClustering(data,actual):
+    print("Clustering...")
+    g=mixture.GMM(n_components=3)
+    outlierIndices=[]
+    mainPoints=data[:]
+    for index in range(len(data)):
+        a=data[index][0]
+        b=data[index][1]
+        c=data[index][2]
+        if abs(a)>4.0 or abs(b)>4.0 or abs(c)>4.0:
+            outlierIndices.append(index)
+            #print("Deletion at index {}:".format(index))
+            #print(mainPoints)
+            mainPoints=np.delete(mainPoints,(index),axis=0)
+    g.fit(mainPoints)
+    labels=g.predict(mainPoints)
+    for i in outlierIndices:
+        r=random.randint(0,2)
+        labels=np.insert(labels,i,r)
+
+    print(len(labels))
+    print("Done!")
+    return labels
+
+    
 
 
 #Create decision tree and output into graph visualization format (dot). Exports to graphFileName
@@ -377,8 +443,8 @@ def calcEpochSize(channels,ratings):
 
 ################################################################################################################################################
 
-channels=readChannels('channels1040.dat')
-actual=readTestStates('teststates1040.dat')
+channels=readChannels('channels1032.dat')
+actual=readTestStates('teststates1032.dat')
 size=calcEpochSize(channels[0],actual)
 
 
@@ -387,14 +453,17 @@ emg=epochs(channels[2],size)
 
 features=analyzeEpochs(eeg,emg) # (delta,theta,ratios,emgPower,autocorr)
 normalized=normalize(features[0],features[2],features[3],features[4])
-data=[]
-for i in range(len(features[0])):
-    a=[normalized[0][i],normalized[1][i],normalized[2][i],normalized[3][i]]
-    data.append(a)
-data=np.asarray(data)
+data=genData(normalized)
 
-ratings=decisionTree(data,actual,'Entropy_Decision_Tree_Depth_3_With_Autocorrelation.dot')
+
+#evalFeatureEffectiveness(data,actual)
+
+#ratings=decisionTree(data,actual,'Entropy_Decision_Tree_Depth_3_With_Autocorrelation.dot')
+ratings=gaussianMixtureClustering(data,actual)
+
 printSimilarity(actual,ratings)
-plotREMHypnogram(actual,ratings)
+#plotHypnogram(actual,ratings)
+plotThreeFeatures(normalized[0],normalized[2],normalized[1],ratings,actual)
+
 
 plt.show()
