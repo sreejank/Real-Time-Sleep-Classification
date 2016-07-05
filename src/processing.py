@@ -151,7 +151,9 @@ def normalize(*args):
 def genFeatureData(normalizedArray):
 	data=[]
 	for i in range(len(normalizedArray[0])):
-		a=[normalizedArray[0][i],normalizedArray[1][i],normalizedArray[2][i],normalizedArray[3][i],normalizedArray[4][i],normalizedArray[5][i],normalizedArray[6][i], normalizedArray[7][i]]
+		a=[]
+		for j in range(len(normalizedArray)):
+			a.append(normalizedArray[j][i])
 		data.append(a)
 	data=np.asarray(data)
 	return data
@@ -159,7 +161,7 @@ def genFeatureData(normalizedArray):
 #Get features. Return tuple of: Delta Power, Delta/Theta Ratio, EMG Power. 
 def getFeatures(eegEpochs,emgEpochs):
 	features=findFeatures(eegEpochs,emgEpochs) # (delta,theta,ratios,emgPower,autocorr,emgMed,largeRatio, sign inv)
-	normalized=normalize(features[0],features[1],features[2],features[3],features[4],features[5],features[6], features[7])
+	normalized=normalize(features[0],features[2],features[3],features[6], features[7])
 	data=genFeatureData(normalized)
 	return data
 

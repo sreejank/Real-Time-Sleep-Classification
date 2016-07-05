@@ -2,6 +2,7 @@ from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
 from sklearn import tree
 from sklearn import mixture
+from sklearn import svm
 import random
 import numpy as np
 
@@ -9,7 +10,7 @@ import numpy as np
 def decisionTree(data,labels,graphFileName):
 	print("Fitting Decision Tree...")
 	data=np.asarray(data)
-	model=tree.DecisionTreeClassifier(criterion='entropy',max_depth=3)
+	model=tree.DecisionTreeClassifier(criterion='entropy',max_depth=8)
 	model=model.fit(data,labels)
 	tree.export_graphviz(model,out_file=graphFileName)
 	print("Done!")
@@ -17,6 +18,14 @@ def decisionTree(data,labels,graphFileName):
 	calc=model.predict(data)
 	printSimilarity(labels,calc)
 	return calc
+
+#Use SVM to classify data (supervised). Return the classifier.
+def svmClassify(data,labels):
+	print("Classifying with SVM...")
+	clf=svm.SVC()
+	clf.fit(data,labels)
+	return clf
+
 
 #Clusters data using Gaussian mixture. Ignore outliers >4 Standard Deviations. 
 def gaussianMixtureClustering(data,actual):

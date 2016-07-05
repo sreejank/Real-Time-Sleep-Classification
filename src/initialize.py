@@ -3,7 +3,7 @@ import matplotlib as plt
 import load,processing,clustering,plotting
 from importlib import reload
 
-eeg,emg,actual=load.getData('channels1032.dat','teststates1032.dat')
+eeg,emg,actual=load.getData('../Data/channels1032.dat','../Data/teststates1032.dat')
 
 features=processing.getFeatures(eeg,emg)
 components=processing.principalComponents(eeg,emg)

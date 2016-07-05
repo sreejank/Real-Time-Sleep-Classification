@@ -46,6 +46,7 @@ def plotPowerSpectrum(epoch):
     ps=np.log10(np.abs(np.fft.rfft(epoch)))
     axarr[1].plot(ps)
     axarr[1].set_title("Power Spectrum")
+    plt.show()
     print("Done!")
 
 
@@ -57,6 +58,7 @@ def plotHypnogram(actual,ratings):
     axarr[0].set_title("Actual")
     axarr[1].plot(ratings)
     axarr[1].set_title("Calculated")
+    plt.show()
     print("Done!")
 
 #Plot Hypnograms just for REM.
@@ -80,3 +82,4 @@ def plotREMHypnogram(actual,ratings):
     axarr[0].set_title("Actual")
     axarr[1].plot(ratingREM)
     axarr[1].set_title("Calculated")
+    plt.show()
