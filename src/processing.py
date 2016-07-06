@@ -121,7 +121,7 @@ def findFeatures(eegEpochs,emgEpochs):
 	emgMed=[]
 	emgPower=[]
 	for epoch in emgEpochs:
-		emgPower.append(power(epoch,0,200))
+		emgPower.append(power(epoch,80,100))
 		emgMed.append(np.median(epoch))
 
 	ratios=[]
@@ -137,6 +137,7 @@ def findFeatures(eegEpochs,emgEpochs):
 		ratios.append(ratio)
 	print("Done!")
 	return (delta,theta,ratios,emgPower,autocorr,emgMed,largeRatio,signInv)
+
 
 #Normalizes features through zscore. 
 def normalize(*args):

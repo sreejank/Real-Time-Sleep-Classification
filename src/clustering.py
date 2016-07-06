@@ -110,3 +110,58 @@ def printSimilarity(actual,ratings):
 	print("Wake. Calculated {} with actual {}".format(calcCount[0],actualCount[0]))
 	print("NREM. Calculated {} with actual {}".format(calcCount[1],actualCount[1]))
 	print("REM. Calculated {} with actual {}".format(calcCount[2],actualCount[2]))
+
+#Run two kmeans clustering algorithms, one to seperate Wake and Sleep and one to seperate NREM and REM. 
+def doubleKmeansCluster(features):
+	kmeans1=KMeans(n_clusters=2)
+	seperateWake=features[:,2:5] #Should be: EMG Power, Large/Small Ratio, Sign Inversions
+	kmeans1.fit(seperateWake)
+	sleepStates=kmeans1.labels_
+
+	group0=[seperateWake[i][0] for i in range(len(sleepStates)) if sleepStates[i]==0]
+	group1=[seperateWake[i][0] for i in range(len(sleepStates)) if sleepStates[i]==1]
+	#if mean EMG power for wake is < mean EMG power for sleep, switch them.
+	if np.mean(group0)< np.mean(group1):
+		sleepStates=[0 if i==1 else 1 for i in sleepStates[:]]
+	
+	sleepIndices=[i for i in range(len(sleepStates)) if sleepStates[i]==1]
+	remSeperation=[]
+	for i in sleepIndices:
+		remSeperation.append(features[i,0:2])
+
+	remSeperation=np.asarray(remSeperation)
+	kmeans2=KMeans(n_clusters=2)
+	kmeans2.fit(remSeperation)
+	remLabels=kmeans2.labels_
+	sleepDict={}
+	for i in range(len(sleepIndices)):
+		sleepDict[sleepIndices[i]]=remLabels[i]
+
+	finalStates=sleepStates[:]
+	for i in range(len(finalStates)):
+		if sleepStates[i]==1:
+			finalStates[i]=sleepDict[i]+1
+
+
+	group1=[remSeperation[i][0] for i in range(len(remSeperation)) if finalStates[i]==1]
+	group2=[remSeperation[i][0] for i in range(len(remSeperation)) if finalStates[i]==2]
+
+	#if mean delta power for nrem is < mean delta power for rem, switch them.
+	if np.mean(group1)<np.mean(group2):
+		for i in range(len(finalStates[:])):
+			if finalStates[i]==1:
+				finalStates[i]=2
+			elif finalStates[i]==2:
+				finalStates[i]=1
+
+	return finalStates
+
+
+
+
+
+
+
+
+
+

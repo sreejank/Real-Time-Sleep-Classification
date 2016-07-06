@@ -45,7 +45,7 @@ def plotPowerSpectrum(epoch):
 
     ps=np.log10(np.abs(np.fft.rfft(epoch)))
     axarr[1].plot(ps)
-    axarr[1].set_title("Power Spectrum")
+    axarr[1].spet_title("Power Spectrum")
     plt.show()
     print("Done!")
 

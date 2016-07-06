@@ -41,7 +41,7 @@ def epochs(channelArray,epochSize):
     i=0
     epochs=[]
     while(i+epochSize-1<len(channelArray)):
-        a=channelArray[i:i+epochSize]
+        a=channelArray[i:int(i+epochSize)]
         i+=epochSize
         epochs.append(a)
     return epochs
