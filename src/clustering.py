@@ -1,12 +1,13 @@
 from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
+from sklearn.cluster import SpectralClustering
 from sklearn import tree
 from sklearn import mixture
 from sklearn import svm
 import random
 import numpy as np
 
-#Create decision tree and output into graph visualization format (dot). Exports to graphFileName
+#Create decision tree and output into graph visualization format (dot). Exports to graphFileName and returns model. 
 def decisionTree(data,labels,graphFileName):
 	print("Fitting Decision Tree...")
 	data=np.asarray(data)
@@ -15,9 +16,7 @@ def decisionTree(data,labels,graphFileName):
 	tree.export_graphviz(model,out_file=graphFileName)
 	print("Done!")
 	print("Score of Decision Tree: {}".format(model.score(data,labels)))
-	calc=model.predict(data)
-	printSimilarity(labels,calc)
-	return calc
+	return model
 
 #Use SVM to classify data (supervised). Return the classifier.
 def svmClassify(data,labels):
@@ -133,6 +132,48 @@ def doubleKmeansCluster(features):
 	kmeans2=KMeans(n_clusters=2)
 	kmeans2.fit(remSeperation)
 	remLabels=kmeans2.labels_
+	sleepDict={}
+	for i in range(len(sleepIndices)):
+		sleepDict[sleepIndices[i]]=remLabels[i]
+
+	finalStates=sleepStates[:]
+	for i in range(len(finalStates)):
+		if sleepStates[i]==1:
+			finalStates[i]=sleepDict[i]+1
+
+
+	group1=[remSeperation[i][0] for i in range(len(remSeperation)) if finalStates[i]==1]
+	group2=[remSeperation[i][0] for i in range(len(remSeperation)) if finalStates[i]==2]
+
+	#if mean delta power for nrem is < mean delta power for rem, switch them.
+	if np.mean(group1)<np.mean(group2):
+		for i in range(len(finalStates[:])):
+			if finalStates[i]==1:
+				finalStates[i]=2
+			elif finalStates[i]==2:
+				finalStates[i]=1
+
+	return finalStates
+
+def doubleSpectralCluster(features):
+	spectral1=SpectralClustering(n_clusters=2)
+	seperateWake=features[:,3:] #Should be: EMG Power, Large/Small Ratio, Sign Inversions
+	sleepStates=spectral1.fit_predict(seperateWake)
+
+	group0=[seperateWake[i][0] for i in range(len(sleepStates)) if sleepStates[i]==0]
+	group1=[seperateWake[i][0] for i in range(len(sleepStates)) if sleepStates[i]==1]
+	#if mean EMG power for wake is < mean EMG power for sleep, switch them.
+	if np.mean(group0)< np.mean(group1):
+		sleepStates=[0 if i==1 else 1 for i in sleepStates[:]]
+	
+	sleepIndices=[i for i in range(len(sleepStates)) if sleepStates[i]==1]
+	remSeperation=[]
+	for i in sleepIndices:
+		remSeperation.append(features[i,:3])
+
+	remSeperation=np.asarray(remSeperation)
+	spectral2=SpectralClustering(n_clusters=2)
+	remLabels=spectral2.fit_predict(remSeperation)
 	sleepDict={}
 	for i in range(len(sleepIndices)):
 		sleepDict[sleepIndices[i]]=remLabels[i]

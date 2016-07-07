@@ -136,7 +136,52 @@ def findFeatures(eegEpochs,emgEpochs):
 			ratio=float(t)/float(d)
 		ratios.append(ratio)
 	print("Done!")
-	return (delta,theta,ratios,emgPower,autocorr,emgMed,largeRatio,signInv)
+	return (delta,theta,ratios,emgMed,emgPower,largeRatio,signInv)
+
+#Time features: Delta Power, Delta/Theta Ratio, Total EMG Power, EMG Median, Large Ratio, Sign Inversions
+def timeFeatures(eeg,emg):
+	import time
+
+	begin=time.time()
+	power(eeg,0.5,4)
+	deltaTime=time.time()-begin
+	
+
+	begin=time.time()
+	a=power(eeg,0.5,4)
+	b=power(eeg,5,10)
+	if b==0:
+		c=0
+	else:
+		c=float(a)/b
+	ratioTime=time.time()-begin
+	
+
+	begin=time.time()
+	signInversions(eeg)
+	signInv=time.time()-begin
+	
+
+	begin=time.time()
+	power(emg,80,100)
+	emgPowerTime=time.time()-begin
+	
+
+	begin=time.time()
+	np.median(eeg)
+	emgMedTime=time.time()-begin
+	
+
+	begin=time.time()
+	r1=power(eeg,0.5,20)
+	r2=power(eeg,0.5,55)
+	if r2==0:
+		r3=0
+	else:
+		r3=float(r1)/r2
+	largeRatioTime=time.time()-begin
+	
+	return (deltaTime,ratioTime,signInv,emgPowerTime,emgMedTime,largeRatioTime)
 
 
 #Normalizes features through zscore. 
@@ -162,7 +207,7 @@ def genFeatureData(normalizedArray):
 #Get features. Return tuple of: Delta Power, Delta/Theta Ratio, EMG Power. 
 def getFeatures(eegEpochs,emgEpochs):
 	features=findFeatures(eegEpochs,emgEpochs) # (delta,theta,ratios,emgPower,autocorr,emgMed,largeRatio, sign inv)
-	normalized=normalize(features[0],features[2],features[3],features[6], features[7])
+	normalized=normalize(features[0],features[2],features[3],features[4], features[5], features[6])
 	data=genFeatureData(normalized)
 	return data
 
