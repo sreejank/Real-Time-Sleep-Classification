@@ -206,7 +206,7 @@ def genFeatureData(normalizedArray):
 
 #Get features. Return tuple of: Delta Power, Delta/Theta Ratio, EMG Power. 
 def getFeatures(eegEpochs,emgEpochs):
-	features=findFeatures(eegEpochs,emgEpochs) # (delta,theta,ratios,emgPower,autocorr,emgMed,largeRatio, sign inv)
+	features=findFeatures(eegEpochs,emgEpochs) # (delta, ratios, emgMed, emgPower, largeRatio, sign inv)
 	normalized=normalize(features[0],features[2],features[3],features[4], features[5], features[6])
 	data=genFeatureData(normalized)
 	return data

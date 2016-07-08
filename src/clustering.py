@@ -1,11 +1,18 @@
 from sklearn.cluster import KMeans
 from sklearn.cluster import DBSCAN
 from sklearn.cluster import SpectralClustering
+from sklearn.neural_network import MLPClassifier
 from sklearn import tree
 from sklearn import mixture
 from sklearn import svm
 import random
 import numpy as np
+from sklearn.cross_validation import KFold
+from sklearn import svm,tree
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+import load,processing
+import time
 
 #Create decision tree and output into graph visualization format (dot). Exports to graphFileName and returns model. 
 def decisionTree(data,labels,graphFileName):
@@ -197,7 +204,84 @@ def doubleSpectralCluster(features):
 
 	return finalStates
 
-
+def supervisedCrossValidate(subjectnum):
+    eeg,emg,actual=load.getData('../Data/channels{}.dat'.format(subjectnum),'../Data/teststates{}.dat'.format(subjectnum))
+    features=processing.getFeatures(eeg,emg)
+    features=np.asarray(features)
+    actual=np.asarray(actual)
+    
+    clfsvm=svm.SVC(kernel='linear')
+    clftree=tree.DecisionTreeClassifier(criterion='entropy',max_depth=4)
+    clfnb=GaussianNB()
+    clfknn=KNeighborsClassifier()
+    clfNN=MLPClassifier()
+    print("Subject {}, Mean Classifier Accuracy, Mean REM Sensitivity, Mean REM Specificity, Mean NREM Sensitivity, Mean NREM Specificity".format(subjectnum))
+    classifiers=[clfsvm,clftree,clfnb,clfknn,clfNN]
+    clfTime=[]
+    for clf in classifiers:
+        scores=[]
+        sensitivitiesrem=[]
+        specificitiesrem=[]
+        sensitivitiesnrem=[]
+        specificitiesnrem=[]
+        print(clf.__class__.__name__,end=',')
+        ctime=0
+        kf=KFold(len(features),n_folds=4)
+        for trainIndex,testIndex in kf:
+            features_train,features_test=features[trainIndex],features[testIndex]
+            labels_train,labels_test=actual[trainIndex],actual[testIndex]
+            
+            begin=time.time()
+            clf.fit(features_train,labels_train)
+            ctime+=time.time()-begin
+            
+            scores.append(clf.score(features_test,labels_test))
+            calculatedLabels=clf.predict(features_test)
+            
+            remtp,remfp,remtn,remfn=0,0,0,0
+            nremtp,nremfp,nremtn,nremfn=0,0,0,0
+            
+            for i in range(len(calculatedLabels)):
+                if labels_test[i]==2:
+                    if calculatedLabels[i]==2:
+                        remtp+=1
+                    else:
+                        remfn+=1
+                else:
+                    if calculatedLabels[i]==2:
+                        remfp+=1
+                    else:
+                        remtn+=1
+                        
+                if labels_test[i]==1:
+                    if calculatedLabels[i]==1:
+                        nremtp+=1
+                    else:
+                        nremfn+=1
+                else:
+                    if calculatedLabels[i]==1:
+                        nremfp+=1
+                    else:
+                        nremtn+=1
+                
+            sensitivitiesrem.append(float(remtp)/(remtp+remfn))
+            specificitiesrem.append(float(remtn)/(remtn+remfp))
+            
+            sensitivitiesnrem.append(float(nremtp)/(nremtp+nremfn))
+            specificitiesnrem.append(float(nremtn)/(nremtn+nremfp))
+            
+        print((np.mean(scores)),end=',')
+        print((np.mean(sensitivitiesrem)),end=',')
+        print((np.mean(specificitiesrem)),end=',')
+        print((np.mean(sensitivitiesnrem)),end=',')
+        print((np.mean(specificitiesnrem)),end='')
+        print()
+        clfTime.append(ctime)
+    
+    print("-----------------")
+    print("Classifier Time Array: ")
+    print(clfTime)
+    print("-----------------")
 
 
 
