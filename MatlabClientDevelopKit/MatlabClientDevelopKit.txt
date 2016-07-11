@@ -1,0 +1,23 @@
+
+This SDK consists of the following components:
+
+
+ClientSDK:
+
+The standard Matlab client SDK. See ClientSDK\Readme.pdf.
+
+
+PlexDoSDK:
+
+The PlexDO digital output SDK for Matlab. See PlexDoSDK\PlexDOReadme.pdf.
+(Note that this document is focused on C/C++ development, but the concepts and
+function names are the same. There is a section at the end describing usage in Matlab.)
+
+
+SoftServer:
+
+SoftServer.exe is a testing program that can emulate data coming from a MAP on systems 
+where a MAP is not installed. This is useful for testing and debugging online client 
+programs, including online OmniPlex clients. See SoftServer\SoftServerUserGuide.doc. 
+(Again, this document is focused on usage with the C/C++ SDK, but the concepts and 
+instructions also apply to usage with Matlab online scripts.)
