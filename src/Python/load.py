@@ -62,5 +62,32 @@ def getData(channelsFile,statesFile):
 	emg=epochs(channels[2],size)
 
 	return (eeg,emg,states)
+    
+#Read Testing Data in txt format.
+def readTextFile(fileName):
+    lineNum=0;
+    featureLabels=[]
+    features=[]
+    states=[]
+    for line in open(fileName):
+        #print(line.split('\t'))
+
+        if(lineNum==17):
+            elems=line.split('\t')
+            featureLabels=elems[3:6]
+        elif(lineNum>18):
+            elems=line.split('\t')
+            if(elems[2]=='W'):
+                states.append(0)
+            elif(elems[2]=='NR'):
+                states.append(1)
+            else:
+                states.append(2)
+            numbers=[float(x) for x in elems[3:6]]
+            features.append(numbers)
+        lineNum+=1
+    features=np.asarray(features)
+    states=np.asarray(states)
+    return (featureLabels,features,states)
 
 
